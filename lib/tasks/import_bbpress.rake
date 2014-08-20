@@ -34,7 +34,7 @@ namespace :import do
     end
 
     begin
-      # prompt for markdown settings
+      # prompt for markdown settings 
       input = ''
 #      puts "Do you want to enable traditional markdown-linebreaks? (linebreaks are ignored unless the line ends with two spaces)"
  #     print "y/N? > "
@@ -47,7 +47,7 @@ namespace :import do
 
 
       #rahul286
-      puts "\nFetching rtMedia import"
+      puts "\nFetching rtMedia import"     
       query =<<EOQ
 	SELECT context_id, guid  FROM rtc_wp_posts JOIN rtc_wp_rt_rtm_media m     ON rtc_wp_posts.ID = m.media_id WHERE context IN ('forum', 'topic', 'reply')
 EOQ
@@ -165,14 +165,26 @@ def sql_import_posts
 
     # details on writer of the post
     user = @bbpress_users.find {|k| k['user_login'] == bbpress_post['user_login']}
-#puts bbpress_post['topic_id']
-	#puts YAML::dump(bbpress_post)
     if user.nil?
-      puts "Warning: User (#{bbpress_post['id']}) #{bbpress_post['user_login']} not found in user list!".red
+      puts "Warning: BB User (#{bbpress_post['topic_id']}) #{bbpress_post['user_login']} not found in user list!".red
     end
 
-    dc_user = User.find_by_email (user['user_email'])
+#    dc_user = User.find_by_email (user['user_email'])
+  
+    # get the discourse user of this post
+    dc_username = bbpress_username_to_dc(user['user_nicename'])
+    if(dc_username.length < 3)
+      dc_username = dc_username.ljust(3, '0')
+    end
 
+    dc_user = dc_get_user(dc_username)
+ 
+if dc_user.nil?
+	        puts YAML::dump(user)
+      puts "Warning: DC User (#{bbpress_post['topic_id']}) #{bbpress_post['user_login']} not found in user list!".red
+    end
+#next
+	
 	topic_title = sanitize_topic bbpress_post['topic_title']
 
     is_new_topic = false
@@ -187,9 +199,9 @@ def sql_import_posts
 
 
     local_media = @rtmedia.to_a.select { |item| item['context_id'] == bbpress_post['topic_id'] }
-    local_guid = ''
+    local_guid = '' 
     if local_media.present?
-
+    
 	#puts YAML::dump(local_media)
 	local_guid = "\n\n<h4>Attachment Link(s):</h4>\n\n" + local_media.to_a.map { |item| item['guid'] }.join("\n\n")
        # puts "Media for #{bbpress_post['topic_id']}  =>  #{local_guid}"
@@ -197,12 +209,12 @@ def sql_import_posts
       end
 
     text = sanitize_text bbpress_post['post_text'] + local_guid
-
+	
 	# if local_media.present?
    	#	 puts text# unless local_media.nil?
 #	end
  #   next
-
+    
     # create!
     post_creator = nil
 
