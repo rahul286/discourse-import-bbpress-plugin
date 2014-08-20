@@ -34,15 +34,24 @@ namespace :import do
     end
 
     begin
-      # prompt for markdown settings 
+      # prompt for markdown settings
       input = ''
-      puts "Do you want to enable traditional markdown-linebreaks? (linebreaks are ignored unless the line ends with two spaces)"
-      print "y/N? > "
-      input = STDIN.gets.chomp
+#      puts "Do you want to enable traditional markdown-linebreaks? (linebreaks are ignored unless the line ends with two spaces)"
+ #     print "y/N? > "
+  #    input = STDIN.gets.chomp
       MARKDOWN_LINEBREAKS = ( /y(es)?/i.match(input) or input.empty? )
       puts "\nUsing markdown linebreaks: " + MARKDOWN_LINEBREAKS.to_s.green
 
       sql_connect
+
+
+
+      #rahul286
+      puts "\nFetching rtMedia import"
+      query =<<EOQ
+	SELECT context_id, guid  FROM rtc_wp_posts JOIN rtc_wp_rt_rtm_media m     ON rtc_wp_posts.ID = m.media_id WHERE context IN ('forum', 'topic', 'reply')
+EOQ
+      @rtmedia = @sql.query query
 
       puts "\n*** Fetching users from MySQL to migrate to Discourse".yellow
       sql_fetch_users
@@ -118,10 +127,10 @@ def sql_fetch_posts(*parse)
   loop do
     query =<<EOQ
       SELECT p.id AS topic_id, u.user_login, f.post_title AS forum_name, p.post_date AS post_time, p.post_title AS topic_title, p.post_content AS post_text, p.post_type, p.post_parent
-      FROM wp_posts p
-      INNER JOIN wp_users u on u.id = p.post_author
-      LEFT JOIN (SELECT id, post_title FROM wp_posts WHERE post_type = 'forum') AS f on f.id = p.post_parent
-      WHERE post_type IN ('topic', 'reply')
+      FROM rtc_wp_posts p
+      INNER JOIN rtc_wp_users u on u.id = p.post_author
+      LEFT JOIN (SELECT id, post_title FROM rtc_wp_posts WHERE post_type = 'forum') AS f on f.id = p.post_parent
+      WHERE post_type IN ('topic', 'reply') AND post_status IN ('publish', 'closed')
       ORDER BY p.id ASC, p.post_title ASC
       LIMIT #{@offset.to_s}, 500;
 EOQ
@@ -156,20 +165,15 @@ def sql_import_posts
 
     # details on writer of the post
     user = @bbpress_users.find {|k| k['user_login'] == bbpress_post['user_login']}
-
+#puts bbpress_post['topic_id']
+	#puts YAML::dump(bbpress_post)
     if user.nil?
       puts "Warning: User (#{bbpress_post['id']}) #{bbpress_post['user_login']} not found in user list!".red
     end
 
-    # get the discourse user of this post
-    dc_username = bbpress_username_to_dc(bbpress_post['user_login'])
-    if(dc_username.length < 3)
-      dc_username = dc_username.ljust(3, '0')
-    end
+    dc_user = User.find_by_email (user['user_email'])
 
-    dc_user = dc_get_user(dc_username)
-
-    topic_title = sanitize_topic bbpress_post['topic_title']
+	topic_title = sanitize_topic bbpress_post['topic_title']
 
     is_new_topic = false
 
@@ -181,7 +185,23 @@ def sql_import_posts
 
     progress = @post_count.percent_of(@bbpress_posts.count).round.to_s
 
-    text = sanitize_text bbpress_post['post_text']
+
+    local_media = @rtmedia.to_a.select { |item| item['context_id'] == bbpress_post['topic_id'] }
+    local_guid = ''
+    if local_media.present?
+
+	#puts YAML::dump(local_media)
+	local_guid = "\n\n<h4>Attachment Link(s):</h4>\n\n" + local_media.to_a.map { |item| item['guid'] }.join("\n\n")
+       # puts "Media for #{bbpress_post['topic_id']}  =>  #{local_guid}"
+    	#puts YAML::dump(local_guid)
+      end
+
+    text = sanitize_text bbpress_post['post_text'] + local_guid
+
+	# if local_media.present?
+   	#	 puts text# unless local_media.nil?
+#	end
+ #   next
 
     # create!
     post_creator = nil
@@ -315,7 +335,7 @@ def sql_fetch_users
     count = 0
     query = <<EOQ
       SELECT id, user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_status, display_name
-      FROM wp_users
+      FROM rtc_wp_users
       LIMIT #{offset}, 50;
 EOQ
 
