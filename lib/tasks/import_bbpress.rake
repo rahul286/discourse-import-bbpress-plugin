@@ -34,7 +34,7 @@ namespace :import do
     end
 
     begin
-      # prompt for markdown settings 
+      # prompt for markdown settings
       input = ''
 #      puts "Do you want to enable traditional markdown-linebreaks? (linebreaks are ignored unless the line ends with two spaces)"
  #     print "y/N? > "
@@ -47,7 +47,7 @@ namespace :import do
 
 
       #rahul286
-      puts "\nFetching rtMedia import"     
+      puts "\nFetching rtMedia import"
       query =<<EOQ
 	SELECT context_id, guid  FROM rtc_wp_posts JOIN rtc_wp_rt_rtm_media m     ON rtc_wp_posts.ID = m.media_id WHERE context IN ('forum', 'topic', 'reply')
 EOQ
@@ -78,7 +78,7 @@ EOQ
         dc_set_temporary_site_settings # set site settings we need
 
         puts "\n*** Creating Discourse users".yellow
-        create_users
+        #create_users
 
         puts "\n*** Importing posts and topics to Discourse".yellow
         sql_import_posts
@@ -170,7 +170,7 @@ def sql_import_posts
     end
 
 #    dc_user = User.find_by_email (user['user_email'])
-  
+
     # get the discourse user of this post
     dc_username = bbpress_username_to_dc(user['user_nicename'])
     if(dc_username.length < 3)
@@ -178,17 +178,19 @@ def sql_import_posts
     end
 
     dc_user = dc_get_user(dc_username)
- 
-if dc_user.nil?
-	        puts YAML::dump(user)
+
+    if dc_user.nil?
+	  puts YAML::dump(user)
       puts "Warning: DC User (#{bbpress_post['topic_id']}) #{bbpress_post['user_login']} not found in user list!".red
     end
 #next
-	
+
+
 	topic_title = sanitize_topic bbpress_post['topic_title']
 
     is_new_topic = false
 
+    # post_parent
     topic = topics[bbpress_post['post_parent']]
 
     if bbpress_post['post_type'] == 'topic'
@@ -199,9 +201,9 @@ if dc_user.nil?
 
 
     local_media = @rtmedia.to_a.select { |item| item['context_id'] == bbpress_post['topic_id'] }
-    local_guid = '' 
+    local_guid = ''
     if local_media.present?
-    
+
 	#puts YAML::dump(local_media)
 	local_guid = "\n\n<h4>Attachment Link(s):</h4>\n\n" + local_media.to_a.map { |item| item['guid'] }.join("\n\n")
        # puts "Media for #{bbpress_post['topic_id']}  =>  #{local_guid}"
@@ -209,21 +211,16 @@ if dc_user.nil?
       end
 
     text = sanitize_text bbpress_post['post_text'] + local_guid
-	
-	# if local_media.present?
-   	#	 puts text# unless local_media.nil?
-#	end
- #   next
-    
+
+   	#	 puts text# unless local_media.blank?
+
     # create!
     post_creator = nil
 
     if is_new_topic
       # create category if it doesn't exist
-      category = create_category(
-        bbpress_post['forum_name'].downcase,
-        DC_ADMIN
-      )
+      # FIXME: forum_name is blank
+      category = create_category( bbpress_post['forum_name'].downcase, DC_ADMIN)
 
       print "\n[#{progress}%] Creating topic ".yellow + topic_title +
         " (#{Time.at(bbpress_post['post_time'])}) in category ".yellow +
@@ -263,6 +260,8 @@ if dc_user.nil?
       post = post_creator.create
     rescue Exception => e
       puts "Error #{e} on post #{bbpress_post['post_id']}:\n#{text}"
+      puts "--"
+      puts YAML::dump(bbpress_post)
       puts "--"
       puts e.inspect
       puts e.backtrace
@@ -459,6 +458,7 @@ def dc_set_temporary_site_settings
   SiteSetting.send("newuser_max_images=", 1000)
   SiteSetting.send("max_word_length=", 5000)
   SiteSetting.send("email_time_window_mins=", 1)
+  SiteSetting.send("default_digest_email_frequency=", '')
 end
 
 def dc_backup_site_settings

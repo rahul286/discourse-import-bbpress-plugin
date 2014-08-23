@@ -14,9 +14,9 @@ users will need to log in to activate their accounts.
 installation first.
 
 # Instructions
-  
+
 * *Run these commands as the discourse user `sudo su - discourse`*
-  
+
 * Head over to the discourse directory `cd /var/www/discourse`
 
 * **Important:** *disable* your email configuration or you will spam all your users with hundreds of emails.
@@ -37,6 +37,8 @@ installation first.
   $ gem install mailcatcher
   $ mailcatcher --http-ip 0.0.0.0
   ```
+
+  You can view [mailcatcher](http://mailcatcher.me/) queue by opening (http://0.0.0.0:1080/) in browser.
 
   If you get errors like ```unable to convert "\x89" from ASCII-8BIT to UTF8``` you need to install a version of the rdoc gem that supports the conversion.
 
@@ -73,7 +75,7 @@ instance: `export RAILS_DB=<your_database> rake import:bbpress`
 * If everything worked, deploy
 * Be sure to have your users reset their passwords on the new Discourse
   site.
-  
+
 # Extra
 * I encountered issues running the importer due to the **scrub** function patch in `lib/freedom_patches/scrub.rb`. Just in case you do run into a scrub error, modify this file to run the import then revert back after your done. I just changed `def scrub` to `def scrub2`.
 * If you run into `"You are trying to install in deployment mode after changing your Gemfile."` errors, just follow the instructions given. Run `bundle install` elsewhere and add the Gemfile.lock to version control.

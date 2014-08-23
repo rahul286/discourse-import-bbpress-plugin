@@ -5,12 +5,12 @@
 # database stuff
 # database stuff
 sql_server: localhost
-sql_user: bbpress
-sql_database: bbpress
-sql_password: replaceme
+sql_user: root
+sql_database: rtcamp_com
+sql_password: root
 
 # User with admin privileges to create users and category
-discourse_admin: forumadmin
+discourse_admin: admin
 
 # If true then nothing will be written to the Discourse database
-test_mode: true
+test_mode: false
