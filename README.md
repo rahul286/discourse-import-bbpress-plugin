@@ -1,3 +1,9 @@
+# Fork Notes
+
+We forked this repo to add rtMedia bbPress attachment support during the migration.
+
+We need to maintain this fork as it is as upstream project is no longer active.
+
 # What is this
 
 This set of rake tasks imports users, threads, and posts from a bbPress
